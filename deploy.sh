@@ -14,11 +14,12 @@ fi;
 echo "PI is reachable"
 
 # Build all the binaries
-GOOS=linux GOARCH=arm GOARM=5 go build -o elephantio-runner ./cmd/elephantio-runner/
+prg=${2:-elephantio-runner}
+GOOS=linux GOARCH=arm GOARM=5 go build -o $prg ./cmd/$prg/
 
 # Move all the binaries and make them executable
-chmod +x elephantio-runner
-scp elephantio-runner pi@$IP:
+chmod +x $prg
+scp $prg pi@$IP:
 
 # Remove the local binaries
-rm elephantio-runner
+rm $prg

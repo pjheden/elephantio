@@ -3,13 +3,16 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/pjheden/elephantio/config"
 	"github.com/pjheden/elephantio/logs"
+	"github.com/pjheden/elephantio/module"
 	"github.com/pjheden/elephantio/task"
+	_ "modernc.org/sqlite"
 )
 
 type Database struct {
@@ -32,19 +35,19 @@ func New(dbPath string) (*Database, error) {
 Open uses the connection string to open the DB. Don't forget to close it!
 */
 func (d *Database) Open() (*sql.DB, error) {
-	return sql.Open("sqlite3", d.dbPath)
+	return sql.Open("sqlite", d.dbPath)
 }
 
 /*
-FullTasks... TODO:
+Modules... TODO:
 */
-func (d *Database) FullTasks() ([]*task.FullTask, error) {
+func (d *Database) Modules() ([]*module.Module, error) {
 	query := sq.Select(
-		"tasks.task",
-		"tasks.interval",
-		"logs.completed_on",
-		"config.pin_1",
-		"config.pin_2",
+		"task",
+		"interval",
+		"completed_on",
+		"pin_button",
+		"pin_light",
 	).
 		From("tasks").
 		Join("logs ON tasks.id = logs.task_id").
@@ -61,23 +64,39 @@ func (d *Database) FullTasks() ([]*task.FullTask, error) {
 		return nil, fmt.Errorf("getting rows: %v", err)
 	}
 
-	fts := []*task.FullTask{}
+	ms := []*module.Module{}
 	for rows.Next() {
-		ft := &task.FullTask{}
+		m := &module.Module{
+			Task:   &task.Task{},
+			Config: &config.Config{},
+		}
+		var timestamp string
+
 		err := rows.Scan(
-			&(ft.Task),
-			&(ft.Interval),
-			&(ft.CompletedOn),
-			&(ft.Pin1),
-			&(ft.Pin2),
+			&m.Task.Name,
+			&m.Task.Interval,
+			&timestamp,
+			&m.Config.ButtonPin,
+			&m.Config.LEDPin,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning issues: %v", err)
 		}
-		fts = append(fts, ft)
+
+		// convert timestamp to time.Time
+		log.Println("trying to parse ", timestamp)
+		layout := "2006-01-02 04:05:06"
+		t, err := time.Parse(layout, timestamp)
+
+		if err != nil {
+			return nil, err
+		}
+		m.CompletedOn = t
+
+		ms = append(ms, m)
 	}
 
-	return fts, nil
+	return ms, nil
 }
 
 /*
@@ -107,7 +126,7 @@ func (d *Database) Tasks() ([]*task.Task, error) {
 		t := &task.Task{}
 		err := rows.Scan(
 			&(t.ID),
-			&(t.Task),
+			&(t.Name),
 			&(t.Interval),
 		)
 		if err != nil {
@@ -165,8 +184,8 @@ func (d *Database) Configs() ([]*config.Config, error) {
 	query := sq.Select(
 		"id",
 		"task_id",
-		"pin_1",
-		"pin_2",
+		"pin_button",
+		"pin_light",
 	).
 		From("config")
 
@@ -187,8 +206,8 @@ func (d *Database) Configs() ([]*config.Config, error) {
 		err := rows.Scan(
 			&(c.ID),
 			&(c.TaskID),
-			&(c.Pin1),
-			&(c.Pin2),
+			&(c.ButtonPin),
+			&(c.LEDPin),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scanning issues: %v", err)

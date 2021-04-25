@@ -50,7 +50,11 @@ func main() {
 	// Board loop
 	for {
 		for _, m := range ms {
-			m.Update()
+			isJustCompleted := m.Update()
+			if isJustCompleted {
+				// save completed LOG to db
+				db.AddLogs(m.Task)
+			}
 		}
 	}
 

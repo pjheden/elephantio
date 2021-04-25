@@ -8,6 +8,7 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
+	"github.com/gofrs/uuid"
 	"github.com/pjheden/elephantio/config"
 	"github.com/pjheden/elephantio/logs"
 	"github.com/pjheden/elephantio/module"
@@ -44,10 +45,14 @@ func (d *Database) Open() (*sql.DB, error) {
 Modules returns the complete module including logs, config and task
 */
 func (d *Database) Modules() ([]*module.Module, error) {
+	// TODO: seperate which modules are active and which is not. so that we can have
+	// old historical tasks saved in db
 	query := sq.Select(
+		"tasks.id",
 		"task",
 		"interval",
 		"completed_on",
+		"config.id",
 		"pin_button",
 		"pin_light",
 	).
@@ -75,9 +80,11 @@ func (d *Database) Modules() ([]*module.Module, error) {
 		var timestamp string
 
 		err := rows.Scan(
+			&m.Task.ID,
 			&m.Task.Name,
 			&m.Task.Interval,
 			&timestamp,
+			&m.Config.ID,
 			&m.Config.ButtonPin,
 			&m.Config.LEDPin,
 		)
@@ -223,3 +230,38 @@ func (d *Database) Configs() ([]*config.Config, error) {
 // TODO Get all tasks in combination with logs and task
 
 // TODO add completed task to logs
+
+/*
+AddLogs adds a row to logs
+*/
+func (d *Database) AddLogs(t *task.Task) error {
+	// Create a Version 4 UUID.
+	u2, err := uuid.NewV4()
+	if err != nil {
+		return err
+	}
+
+	query := sq.Insert(
+		"logs",
+	).Columns(
+		"id",
+		"task_id",
+	).Values(
+		u2,
+		t.ID,
+	)
+
+	conn, err := d.Open()
+
+	defer conn.Close()
+	if err != nil {
+		return fmt.Errorf("connecting to db: %v", err)
+	}
+	_, err = query.PlaceholderFormat(sq.Dollar).RunWith(conn).Query()
+	if err != nil {
+		return fmt.Errorf("inserting row: %v", err)
+	}
+
+	log.Println("Inserted %+v into logs", t)
+	return nil
+}

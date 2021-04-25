@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Help us not have to start over when connected to the wrong wifi
-IP=${1:-192.168.1.79}
+IP=${1:-elephantio.local}
 echo "pinging $IP"
 if ! ping -c1 $IP &>/dev/null; then
 	echo "maybe switch wifi networks; trying once more in 5s (^C now to give up)"

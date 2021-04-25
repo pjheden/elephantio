@@ -1,0 +1,19 @@
+[Unit]
+Description=elephantio-runner
+After=network.target
+
+# Files we need
+ConditionPathExists=/home/pi/elephantio-runner
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+
+User=pi
+WorkingDirectory=/home/pi/
+
+ExecStart=/home/pi/elephantio-runner
+
+[Install]
+WantedBy=multi-user.target

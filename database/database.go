@@ -12,6 +12,8 @@ import (
 	"github.com/pjheden/elephantio/logs"
 	"github.com/pjheden/elephantio/module"
 	"github.com/pjheden/elephantio/task"
+
+	// Necessary to get specifig driver that works with RPi
 	_ "modernc.org/sqlite"
 )
 
@@ -39,7 +41,7 @@ func (d *Database) Open() (*sql.DB, error) {
 }
 
 /*
-Modules... TODO:
+Modules returns the complete module including logs, config and task
 */
 func (d *Database) Modules() ([]*module.Module, error) {
 	query := sq.Select(
